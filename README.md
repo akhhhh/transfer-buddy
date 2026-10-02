@@ -1,36 +1,158 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🔄 Transfer Buddy
 
-## Getting Started
+Send files and messages between two devices using a **5-digit code**. No sign-up, no cloud upload — files travel **directly from one browser to the other** over WebRTC.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## ✨ Features
+
+- 🔢 **Code-based pairing** — every visitor gets a 5-digit code; enter a friend's code to connect
+- 📁 **Peer-to-peer file transfer** — drag & drop or click to pick any file
+- 💬 **Live chat** — text messages over the same connection, with new-message notifications
+- ⬇️ **Received files list** — name, size and a one-click download
+- 📋 **Clipboard helpers** — copy your code or paste a friend's code in one tap
+- 🌙 **Dark UI**, fully responsive for phones and desktops
+- ⏱️ **Codes expire after 5 minutes**
+
+---
+
+## 🏗️ How It Works
+
+```
+ Device A                       Next.js API                      Device B
+ ────────                       ───────────                      ────────
+ 1. Create PeerJS peer
+ 2. POST /api/register ───────► store code → peerId
+    ◄─────── "48213"
+                                                                 3. Enter "48213"
+                                 POST /api/resolve ◄─────────── 4. look up code
+                                 ─────────────────► peerId A
+ 5. ◄═══════════ direct WebRTC data channel (files + chat) ═══════════► 
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The server only matches **code → peer ID**. File contents and messages never pass through it.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🧰 Tech Stack
 
-## Learn More
+| Layer | Tools |
+|---|---|
+| Framework | **Next.js 16** (App Router), **React 19**, **TypeScript** |
+| P2P transport | **PeerJS** (WebRTC data channels) |
+| Styling | **Tailwind CSS 4**, `tw-animate-css` |
+| UI | **lucide-react** icons, **sonner** toasts, `next-themes` |
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 📁 Project Structure
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+transfer-buddy/
+├── app/
+│   ├── page.tsx                 # main logic: peer setup, connect, send/receive
+│   ├── layout.tsx               # root layout, fonts, toaster
+│   ├── components/
+│   │   ├── Navbar.tsx
+│   │   ├── FileDropzone.tsx     # drag & drop file picker
+│   │   └── Chat.tsx             # chat window
+│   └── api/
+│       ├── register/route.js    # POST: peerId → 5-digit code
+│       └── resolve/route.js     # POST: code → peerId
+├── components/ui/sonner.tsx     # toast wrapper
+├── lib/utils.ts
+└── public/                      # logo
+```
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🚀 Getting Started
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Prerequisites
+
+- Node.js 18+
+- npm
+
+### Install and run
+
+```bash
+git clone https://github.com/akhhhh/transfer-buddy.git
+cd transfer-buddy
+npm install
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000).
+
+### Other scripts
+
+```bash
+npm run build   # production build
+npm run start   # serve the production build
+npm run lint    # ESLint
+```
+
+---
+
+## 📖 Usage
+
+### Worked example: send a PDF from your laptop to your phone
+
+1. **Laptop** — open the app. Your code appears, e.g. `48213`.
+2. **Phone** — open the same site, type `48213` under *Enter code to connect*, tap **Connect**.
+3. Both screens show a **Peer Connected!** toast.
+4. **Laptop** — drag `notes.pdf` into the dropzone and press **Send File**.
+5. **Phone** — a **File Received!** toast appears. Scroll to *Received Files* and tap **Download**.
+6. Tap the 💬 button on either device to chat.
+
+---
+
+## 🔌 API
+
+### `POST /api/register`
+
+```json
+// request
+{ "peerId": "a1b2c3d4-..." }
+// response
+{ "code": "48213" }
+```
+
+### `POST /api/resolve`
+
+```json
+// request
+{ "code": "48213" }
+// response (200)
+{ "peerId": "a1b2c3d4-..." }
+// response (404)
+{ "error": "Invalid code" }
+```
+
+---
+
+## ⚠️ Known Limitations
+
+| Limitation | Details |
+|---|---|
+| In-memory code store | Codes live in server memory. They reset on restart, and may not work on serverless hosts (e.g. Vercel) where requests can hit different instances |
+| Whole-file transfer | Each file is sent as a single buffer, so very large files can use a lot of memory |
+| Strict networks | Uses PeerJS defaults (STUN only). Some corporate or mobile networks need a TURN server to connect |
+| Code collisions | 5-digit codes are random with no uniqueness check |
+
+---
+
+## 🗺️ Roadmap
+
+- [ ] Persistent code store (Redis / Upstash)
+- [ ] Chunked transfer with a progress bar
+- [ ] Multiple files at once
+- [ ] Configurable TURN server
+- [ ] Shared clipboard sync
+
+---
+
+## 👨‍🎓 Author
+
+**Abhishek Rajput** — BTech CSE, Bennett University
+[LinkedIn](https://www.linkedin.com/in/abhishek-rajput-304b2a320/) • [GitHub](https://github.com/akhhhh)
